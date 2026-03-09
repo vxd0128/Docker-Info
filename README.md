@@ -1,28 +1,26 @@
 # How to Create a Dockerfile, Build a Docker Image, and Run It for Python Apps
 
-## Directory
-
-* [1. Basic idea](#1-basic-idea)
-* [2. General project structure](#2-general-project-structure)
-* [3. Example A: Regular Python script](#3-example-a-regular-python-script)
-* [4. Example B: Flask app](#4-example-b-flask-app)
-* [5. Example C: FastAPI app](#5-example-c-fastapi-app)
-* [6. General Dockerfile pattern for Python apps](#6-general-dockerfile-pattern-for-python-apps)
-* [7. Commands summary](#7-commands-summary)
-* [8. Recommended `.dockerignore`](#8-recommended-dockerignore)
-* [9. Common issues](#9-common-issues)
-* [10. One-page quick reference](#10-one-page-quick-reference)
-* [11. Short explanation to send with it](#11-short-explanation-to-send-with-it)
-
----
-
-# How to Create a Dockerfile, Build a Docker Image, and Run It for Python Apps
-
 This guide shows how to containerize and run three common types of Python applications:
 
 * a regular Python script (`.py`)
 * a Flask app
 * a FastAPI app
+
+---
+
+## Directory
+
+* [1. Basic idea](#1-basic-idea)
+* [2. General project structure](#2-general-project-structure)
+* [3. Installing external Python libraries](#3-installing-external-python-libraries)
+* [4. Example A: Regular Python script](#4-example-a-regular-python-script)
+* [5. Example B: Flask app](#5-example-b-flask-app)
+* [6. Example C: FastAPI app](#6-example-c-fastapi-app)
+* [7. General Dockerfile pattern for Python apps](#7-general-dockerfile-pattern-for-python-apps)
+* [8. Commands summary](#8-commands-summary)
+* [9. Recommended `.dockerignore`](#9-recommended-dockerignore)
+* [10. Common issues](#10-common-issues)
+* [11. One-page quick reference](#11-one-page-quick-reference)
 
 ---
 
@@ -50,12 +48,89 @@ project/
 ├── requirements.txt
 └── Dockerfile
 ```
-
+* **Dockerfile**: a text file with instructions for Docker
+* **app.py**: your mainpython script
+* **requirements.txt**: contains all python libraries needed for **app.py**. Typically these correspond to the packages you ```import``` in your script.
+  
 If the app has multiple files, keep them in the same project folder and copy them into the image.
 
 ---
 
-## 3. Example A: Regular Python script
+## 3. Installing external Python libraries
+
+If the Python program depends on external libraries (for example `pandas`, `numpy`, `flask`, etc.), those libraries must be installed inside the Docker image.
+
+The recommended way to do this is by using a **`requirements.txt`** file.
+
+---
+
+### Step 1 — Create `requirements.txt`
+
+List all required Python packages.
+
+Example:
+
+```txt
+pandas
+numpy
+requests
+```
+
+Example for web applications:
+
+```txt
+flask
+```
+
+or
+
+```txt
+fastapi
+uvicorn
+```
+
+---
+
+### Step 2 — Update the Dockerfile
+
+Install dependencies during the Docker image build.
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "app.py"]
+```
+
+---
+
+### Why this order matters
+
+Installing dependencies **before copying the application code** allows Docker to cache the dependency layer.
+
+This makes rebuilds **much faster** when only the Python code changes.
+
+---
+
+### Alternative: install a single library
+
+If only one package is needed, it can be installed directly in the Dockerfile:
+
+```dockerfile
+RUN pip install pandas
+```
+
+However, using **`requirements.txt` is recommended for most projects**.
+
+---
+
+## 4. Example A: Regular Python script
 
 ### Files
 
@@ -105,7 +180,7 @@ python app.py
 
 ---
 
-## 4. Example B: Flask app
+## 5. Example B: Flask app
 
 ### Files
 
@@ -180,7 +255,7 @@ http://localhost:5000
 
 ---
 
-## 5. Example C: FastAPI app
+## 6. Example C: FastAPI app
 
 ### Files
 
@@ -263,7 +338,7 @@ http://localhost:8000/docs
 
 ---
 
-## 6. General Dockerfile pattern for Python apps
+## 7. General Dockerfile pattern for Python apps
 
 A common pattern is:
 
@@ -290,7 +365,7 @@ And adjust the `CMD` if needed.
 
 ---
 
-## 7. Commands summary
+## 8. Commands summary
 
 ### Build image
 
@@ -330,7 +405,7 @@ docker stop <container_id>
 
 ---
 
-## 8. Recommended `.dockerignore`
+## 9. Recommended `.dockerignore`
 
 To avoid copying unnecessary files into the image, create a `.dockerignore` file:
 
@@ -350,7 +425,7 @@ This keeps images smaller and cleaner.
 
 ---
 
-## 9. Common issues
+## 10. Common issues
 
 ### Issue: App works locally but not in Docker
 
@@ -386,7 +461,7 @@ unless your filename or app object name is different.
 
 ---
 
-## 10. One-page quick reference
+## 11. One-page quick reference
 
 ### Regular Python script
 
@@ -435,4 +510,5 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 docker build -t my-fastapi-app .
 docker run --rm -p 8000:8000 my-fastapi-app
 ```
+
 
